@@ -31,27 +31,20 @@ class CUBDataset(MNIST):
     def download(self):
         """Download the MNIST data if it doesn't exist in processed_folder already."""
         from six.moves import urllib
-
         if self._check_exists():
             return
-
-        # download files
         try:
-            os.makedirs(os.path.join(self.root, self.raw_folder))
-            os.makedirs(os.path.join(self.root, self.processed_folder))
-        except OSError as e:
-            if e.errno == errno.EEXIST:
-                pass
-            else:
-                raise
-
-        folder = os.path.join(self.root, self.raw_folder)
+            os.makedirs(self.raw_folder)
+            os.makedirs(self.processed_folder)
+        except:
+            print("yeeted")
+        folder = self.raw_folder
 
         for url in self.urls:
             print('Downloading ' + url)
             data = urllib.request.urlopen(url)
             filename = url.rpartition('/')[2]
-            file_path = os.path.join(self.root, self.raw_folder, filename)
+            file_path = os.path.join(self.raw_folder, filename)
             with open(file_path, 'wb') as f:
                 f.write(data.read())
 
@@ -110,10 +103,13 @@ class CUBDataset(MNIST):
         test_data, test_label = [], []
 
         for i, img_id in enumerate(training_set):
-            # print(i, img_id)
+                        # print(i, img_id)
             x = np.array(Image.open(folder + '/images/' + images_dict[img_id]))
             bbox = tuple(int(x) for x in bbox_dict[img_id])
             if x.shape[-1] == 1:
+                x = x.repeat(3, -1)
+            elif len(x.shape) == 2:
+                x = x.reshape(x.shape[0], x.shape[1], 1)
                 x = x.repeat(3, -1)
             x = x[bbox[1]:bbox[1]+bbox[3], bbox[0]:bbox[0]+bbox[2]]
             train_data.append(torch.from_numpy(x))
@@ -123,6 +119,11 @@ class CUBDataset(MNIST):
             # print(i, img_id)
             x = np.array(Image.open(folder + '/images/' + images_dict[img_id]))
             bbox = tuple(int(x) for x in bbox_dict[img_id])
+            if x.shape[-1] == 1:
+                x = x.repeat(3, -1)
+            elif len(x.shape) == 2:
+                x = x.reshape(x.shape[0], x.shape[1], 1)
+                x = x.repeat(3, -1)
             x = x[bbox[1]:bbox[1] + bbox[3], bbox[0]:bbox[0] + bbox[2]]
             test_data.append(torch.from_numpy(x))
             test_label.append(torch.LongTensor([int(image_class_dict[img_id])]))
@@ -130,9 +131,9 @@ class CUBDataset(MNIST):
         training_set = (train_data, train_label)
         test_set = (test_data, test_label)
 
-        with open(os.path.join(self.root, self.processed_folder, self.training_file), 'wb') as f:
+        with open(os.path.join(self.processed_folder, self.training_file), 'wb') as f:
             torch.save(training_set, f)
-        with open(os.path.join(self.root, self.processed_folder, self.test_file), 'wb') as f:
+        with open(os.path.join(self.processed_folder, self.test_file), 'wb') as f:
             torch.save(test_set, f)
 
         print('Done!')
@@ -151,7 +152,10 @@ class CUBDataset(MNIST):
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image
-
+        
+        if img.shape[-1] != 3:
+            print(img.shape)
+            print(index)
         img = Image.fromarray(img.numpy())
 
         if self.transform is not None:
@@ -163,7 +167,6 @@ class CUBDataset(MNIST):
         target = target - 1
         if img.size(0) == 1:
             img = img.expand(3, 224, 224)
-
         return img, target
 
 
@@ -352,15 +355,17 @@ class ImagenetPartDataset(MNIST):
 
         folder = os.path.join(self.root, self.raw_folder)
 
-        # for url in self.urls:
-        #     print('Downloading ' + url)
-        #     current = os.cwd()
-        #     os.chdir(folder)
-        #     call(['git', 'clone', url])
-        #     os.chdir(current)
+        for url in self.urls:
+             print('Downloading ' + url)
+             current = os.getcwd()
+             os.chdir(folder)
+             call(['git', 'clone', url])
+             os.chdir(current)
 
         # process and save as torch files
         print('Processing...')
+        folder1 = folder
+        folder = os.path.join(folder, 'detanimalpart')
 
         training_set = []
         testing_set = []
@@ -369,9 +374,9 @@ class ImagenetPartDataset(MNIST):
             img_folder = folder + '/' + f + '/img/img'
             data_file = folder + '/' + f + '/img/data.mat'
 
-            with h5py.File(data_file, 'r') as f:
-                files = list(f)
-                pass
+        #    with h5py.File(data_file, 'r') as f:
+         #       files = list(f)
+                #pass
 
         with open(folder+'/train_test_split.txt', 'r') as f:
             lines = f.readlines()
@@ -436,9 +441,9 @@ class ImagenetPartDataset(MNIST):
         training_set = (train_data, train_label)
         test_set = (test_data, test_label)
 
-        with open(os.path.join(self.root, self.processed_folder, self.training_file), 'wb') as f:
+        with open(os.path.join(self.processed_folder, self.training_file), 'wb') as f:
             torch.save(training_set, f)
-        with open(os.path.join(self.root, self.processed_folder, self.test_file), 'wb') as f:
+        with open(os.path.join(self.processed_folder, self.test_file), 'wb') as f:
             torch.save(test_set, f)
 
         print('Done!')
@@ -474,6 +479,7 @@ class ImagenetPartDataset(MNIST):
 
 
 if __name__ == '__main__':
-    dataset = ImagenetPartDataset('data/ImagenetPart', download=True)
-    for example in dataset:
-        pass
+    dataset = CUBDataset('./data/CUB', download=True) 
+#    dataset = ImagenetPartDataset('', download=True)
+#    for example in dataset:
+#        pass
